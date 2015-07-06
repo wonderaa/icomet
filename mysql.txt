@@ -1,0 +1,290 @@
+主从数据库 与  分区设置
+
+mysql  授权
+
+查看mysql授权表
+
+select user,host,password from mysql.user;
+
+给从服务器设置授权用户
+
+grant all slave on *.* to root@ip identified  by 123 with option
+
+1、授权从服务器登录
+
+grant all on *.*　root @'ip' identified by '123';
+
+2、日志文件
+
+/etc/my.cof
+
+[mysqld]
+port=3306
+
+socket = /var/lib/mysql/mysql.sock
+
+log-slow-queries=mysql-slow.log(慢查询日志)
+
+log-error=mysql.err
+
+log=mysql.log
+
+log-bin=mysql-bin
+
+
+
+
+
+重新生成新日志
+
+mysql->flush logs;)
+
+查看最后一个bin-log日志
+
+mysql->show master status;
+
+清空所有日志
+
+mysql->reset master;
+
+访问bin-log日志
+
+查看mysql字符集状态
+
+mysql->\s;
+
+/usr/local/mysql/bin/mysqlbinlog --no-defaults mysql-bin/00001
+
+bin-log日志可以回复数据
+
+恢复数据
+
+/usr/local/mysql/bin/mysqlbinlog --no-defaults mysql-bin.0002 | /usr/local/mysql/bin/mysql -uroot -p123 dbname
+
+
+
+备份数据
+
+mysqldump -uroot -p123 test -l -F'/temp/test.sql'
+
+-F级flush  logs
+-l 读锁 （禁止写操作可以读取数据）
+
+-v 查看导入信息
+
+-f当中遇到错误跳过继续执行
+
+备份数据
+/usr/local/mysql/bin/mysqldump -uroot -p123 test -l -F>/temp/test.sql
+
+恢复指定sql语句
+
+mysqlbinlog --no-defaults --stop-position="644" mysql-bin.0004|mysql -uroot -p123 dbname
+
+参数说明
+mysqlbinlog --no-defaults --stop-position="180" --stop-position="280" |mysql -uroot -p123 test
+
+--stop-date='';
+
+
+
+
+主从服务器配置
+
+主服务器配置
+
+1、登录mysql
+
+2、给从服务器设置授权用户 grant all on *.* to root@ip identified by 123;
+
+3、修改主数据库服务器配置文件，开启binlog日志并设置server-id（不能相同）
+
+log-bin = mysql-bin
+server-id =1
+
+4、在主服务器上设置读锁有效，确保没有数据库操作，以便获得一个一致性的快照
+
+mysql->flush tables with read lock;
+
+5、查看主服务器上当前的二进制日志名和偏移量
+
+mysql->show master status;(方便备份)
+
+6、目前主数据库服务器已经停止了更新操作，生成主数据库的备份，备份方式
+
+  1、cp全部数据
+  2、mysqldump备份数据
+
+7、主数据库备份完毕后，主数据库可以恢复写操作，剩下的操作只需要在从服务器上操作
+
+mysql->unlock tables;
+
+8、把主数据的一致性备份恢复到从数据库上，把以上的压缩包解压后放到相应的目录即可
+
+
+
+
+
+
+mysql从服务器配置
+
+1、修改数据库的server-id,注意server-id的值必须是唯一的，不能和主数据库的配置相同，如果有多个从服务器，每个从服务器必须有自己的唯一server-id值
+
+  1、将原有主服务器数据备份并恢复到从服务器
+
+    mysqldump -uroot -p123 test -l -F> /temp/test.sql
+
+  2、拷贝到从服务器 
+
+    scp /temp/test.sql root@ip:/temp/
+
+  3、清空原有数据库bin-log 日志
+
+    reset master；
+
+  4、恢复数据
+
+   mysqldump -uroot -p123 test </temp/test.sql
+
+2、配置从服务器
+vi /etc/my.conf
+
+   1、开启master-host = 主服务器ip
+   2、master-user = 同步用户
+   3、master-port=3306 
+   4、server-id=2
+
+重启mysql 
+ pkill mysqld
+或
+ kill -9 mysqld
+
+
+查看是否与主服务器取得同步
+
+mysql-> show slave status\G
+
+
+
+从数据库常用命令
+1、启动复制线程
+   start slave 
+2、停止复制线程
+   stop slave
+3、查看从数据库状态
+   show slave status
+4、查看主数据库bin-log日志
+   show master  logs
+5、动态改变到主服务器的配置
+   change master to
+6、查看从数据库运行进程
+    show processlist
+
+mysql 常见错误
+
+从数据库无法同步
+
+show slave status显示 Slave_SQL_Running 为NO，Seconds_Benhind_Master 为Null
+
+原因
+ 1、程序可能在slave上进行了写操作
+ 2、也可能是slave机重启后，事务回滚造成的
+解决方法：
+ 1、mysql->slave top;
+    mysql->set GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
+    mysql->slave start;
+ 2、
+    slave库（从服务器） mysql->slave stop 
+    master库（主服务器） mysql->show master status;
+得到主服务器上当前的二进制日志名和偏移量 
+
+然后到slave（从服务器上执行手动同步）
+
+mysql-> change master to 
+master_host='';
+master_user='';
+master_password='';
+master_port=3306
+master_log_file="";
+master_log_pos='';
+再启动slave start 
+   
+如果  Slave_10_Running:Yes  Slave_SQL_Running:Yes  这2个都为yes则与主服务器同步成功
+
+
+
+
+
+
+mysql分区技术
+
+常用分区技术
+
+ 1、RANGE
+    基于属于一个给定连续区间的列值，把多行给分区(适合日期类型，支持复合分区，有限分区，一般只针对某一列)
+
+ 2、LIST
+    雷士与按RANGE分区，区别在于LIST分区是基于列值匹配一个离散值集合中的某个值来进行选择（适合于枚举类型，适合与固定取值的列，支持复合分区，一般只针对某一列）
+
+ 3、HASH
+    基于用户定义的表达式的返回值来进行悬着的分区，该表达式使用将要插入到表中的这些行的列值进行计算，这个函数可以包含mysql中有效的、产生非负整数的任何表达式
+
+ 4、KEY
+    类似于按HASH分区，区别在于KEY分区只支持计算一列或多列，且mysql服务器提供其自身的哈希函数
+
+
+RANGE 分区
+
+分区格式
+
+PARTITIONBY  RANGE(分区字段)（
+ PARTITION 瓶VALUES LESS THAN（6）,
+ 
+ PARTITION 瓶VALUES LESS THAN（11）,
+ 
+ PARTITION 瓶VALUES LESS THAN（16）,
+
+ PARTITION 瓶VALUES LESS THAN（21）)
+
+
+LIST 分区（使用与枚举）
+
+PARTITION BY LIST（枚举字段）（
+
+ PARTITION p0 VALUES IN（1,2），
+ PARTITION p1 VALUES IN（2,3），
+）
+
+HASH 
+
+PARTITION BY HASH(分区字段)
+PARTITIONS 4 //随机的分为4个分区
+;
+
+
+
+
+
+mysql 存储
+
+\d 修改定界符
+create procedure  存储名称（）
+begin
+set @i=1;
+while @i<1000 do
+insert into table values(1);
+set @i=@i+1;
+end
+
+
+
+设这inndb独立表空气
+
+修改配置文件
+加上 innodb_file_per_table=1;
+
+//@i  定义变量
+
+
+查看存储方法
+mysql->? procedure
