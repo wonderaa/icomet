@@ -1,1 +1,10 @@
-asdfojasodfjaosjdf
+git  使用教程
+
+
+添加新文件
+
+git  add   文件名
+
+git commit -m "note"
+
+git push -u origin master  //登录
