@@ -1,0 +1,261 @@
+shpinx 全文检索
+
+1、全文检索分为
+
+        1.1、顺序扫描
+
+	1.2、索引扫描
+ 
+2、如何创建索引
+	1、一些需要创建索引的文档(Documents)
+	2、将源文档传给分词组件(Tokenizer
+	3、将得到的词元(Token)传给语言处理组件(Linguistic Processor)
+	4、将得到的词传给索引组件(Indexer)
+
+
+
+3、安装shpinx
+ ./configure  --prefix=/usr/lcoal/shpinx --with-mysql=/usr/local/mysql(mysql 安装路径)
+
+make && make install（编译安装）
+
+
+配置文件
+
+/etc/sphinx.conf
+
+主数据源
+
+source main{
+
+}
+
+增量数据源
+
+index main{
+
+}
+
+增量数据索引
+
+index delta:main{
+
+}
+
+分布式索引
+
+index dist1{
+
+}
+
+索引器
+
+indexer{
+
+}
+
+服务进程
+
+searchd{
+
+}
+ 
+
+基本配置
+
+
+数据源src1是名字即可以自己定义，主数据源
+
+source  src1{
+	type=mysql			#数据库类型
+	sql_host=localhost		#数据库主机名
+	sql_user=root			#数据库用户名
+	sql_pass=123456			#数据库密码
+	sql_db=sphinx			#数据库名称
+	sql_port=3306			#数据库端口	
+	sql_sock=/tmp/mysql.sock	#linux下需要开启，指定sock文件
+	sql_query_pre=SETNAMES UTF8	#mysql检索编码
+	sql_query_pre=SET SESSION query_cache_type=OFF 	#关闭缓存
+	sql_query=\			#获取数据的sql语句
+	SELECT id,title,content FROM post #id为必须字段以供下面查询用($id)
+	#sql_attr_uint=group_id 	#对排序字段进行注释
+	#sql_attr_timestamp=date_added  #对排序字段进行注释
+	sql_query_info = SELECT　* FROM post WHERE id=$id
+}
+
+source src1throttled : src1	#继承主数据源
+
+主数据源索引
+
+index test1{
+	source = src1		#索引源声明
+	charset_type=utf-8 	#(数据库编码)
+	charset_table=		#上面指定了编码这里需要开启
+
+}
+
+
+增量索引
+
+index test1stemmed : test1  #先注释
+
+分布式索引
+index dist		    #也先注释
+   
+快捷注释方法
+
+:627,631s/^/#/g  
+
+
+
+索引器设置
+
+indexer{
+	mem_limit=256M  #内存大小限制默认32M，推荐256M
+}
+
+searched{
+
+}
+
+
+
+创建索引
+
+创建索引命令indexer：
+-c  指定配置文件
+--all  对所有索引重新编制索引
+--rotate 用于轮换索引，主要是在不停止服务的时候，增加索引
+--merge  用于合并索引
+
+
+./indexer --all
+
+如果执行失败则（libmysqlclient.so.18） 放在所有程序都能找到的程序下（/usr/lib）
+cp /usr/local/mysql/lib/libmysqlclient.so.18   /usr/lib/
+
+
+搜索
+./search str  
+
+
+
+
+
+
+coreseek  中文分词（sphinx+mmseg）
+
+1、先安装mmseg
+
+./configure --prefix=/usr/local/mmseg(如果最后报错则执行automake后在执行./configure --prefix=.....)
+
+2、make && makeinstall
+
+3、编译安装coreseek（csft） sphinx配置文件
+
+./configure --prefix=/usr/local/coreseek --with-mysql=/usr/local/mysql --with -mmseg=/usr/local/mmseg --with-mmseg-includes=/usr/local/mmseg/include/mmseg/ --with-mmseg-libs=/usr/local/mmseg/lib/
+
+make&&makeinstall
+
+
+分词算法分类
+	1、基于字符串匹配的分词方法
+		1.1、常用分词法
+	
+	2、基于理解的分词方法
+	
+	3、基于统计的分词方法(根据词出现的频率)
+
+配置文件
+
+cp coreseek/etc/sphinx.conf.dist.csft  csft.conf
+
+修改
+
+index test1{
+	#stopwords = G:\data\stopwrods.txt
+	#wordforms = G:\data\wordform.txt
+	#exceptins =/data/exception.txt
+	#charset_type = sbcs
+	添加
+	charset_type = zh_cn.utf-8
+	charset_dictpath=/usr/lcoal/mmseg/etc/ #安装mmseg的目录
+}
+其他部分与英文sphinx.conf 配置相同
+
+php使用sphinx
+
+1、引用sphinxapi（sphinxapi.php）类文件或者安装sphinx php 模块
+	
+2、启动sphinx
+cd /usr/local/coreseek    ./searchd(-c  指定配置文件 ，--stop 停止服务 ，--pidfile 显示指定PID文件 -p 指定端口)
+
+3、（加载sphinx模块 通过phppize）
+
+3.1调用 /usr/lcoal/php/bin/phpize  （主要用户生成脚本 configure）
+
+3.2 先编译 cd lamp/coreseek/csft/api/libsphinxclient
+	./configure   make&&makeinstall
+3.3 cd lamp/sphinx-1.1.0
+	./configure --with-php-configure=/usr/local/php/bin/php-config --with-sphinx
+	make && makeinstall
+
+
+
+2015/6/17
+
+php+mysql+coreseek
+
+安装Samba
+
+yum -y install samba* --skip-broken
+
+
+code
+
+
+$sphinx = new SphinxClient();
+$sphinx->SetServer('localhost',9312);
+$sphinx->SetMatchMode(SPH_MATHC_ANY);   //拆词(SPH_MATCH_ALL完全匹配)（SPH_MATCH_ANY 任意匹配）
+$result = $sphinx->query("$keywords","*");//* 索引
+$ids = join(",",array_keys($result["matches"]));//获得查询到的所有文档id
+
+//数据库查询  where id in($ids);
+//高亮显示
+$sphinx->buildExcerpts();
+
+
+
+//sphinx 实时 索引（主索引+增量索引）
+
+1、创建一个计数器表	
+	一个简单的实现是，在数据库中增加一个表，记录将文档集分为两个部分的文档ID每次重新构建主索引时，更新这个表
+	create table sph_counter(
+		counter_id integer primary key not null,
+		max_doc_id integer not null
+		);
+2、修改配置文件
+	主数据源，继承数据源，主索引，继承索引。（继承索引也就是增量索引）
+	主数据源里面：我们需要把欲查询语句改成下面的语句
+	vi  csft.conf
+	Source main{
+		//query语句修改为
+		sql_query_pre = REPLACE INTO sph_counter select 1,max(id) from post
+		sql_query = select id ,title content from post where id<=(select max_doc_id from sph_counter where counter_id=1)
+	}
+
+3、增量数据源
+source delta : main{
+	sql_query_pre = set names utf8
+	sql_query = select  id,title,content from post where id>(select max_doc_id from sph_counter where count_id=1)
+}
+
+4、增量索引
+index  delta:main{
+	source = delta
+	path = /usr/local/coreseek/var/data/delta
+}
+
+ 
+生成索引测试（启动过./serach 后以后的所有操作必须加 --rotate）
+./indexer --all --rotate
