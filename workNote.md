@@ -1,4 +1,5 @@
 **Linux桥接网络配置**
+
 - ONBOOT=yes
 - BOOTPROTO=static
 - IPADDR=192.168.0.175
@@ -7,7 +8,7 @@
 - DNS1=114.114.114.114
 - MM_Controlled=no
 - DEVICE=eth0
-- 
+
 **svn 启动命令**
 
 `serversvn -d -r responsePath`
@@ -39,6 +40,7 @@
 `unlock tables;`
 
 **MySql从服务器配置**
+
 1、设置从服务器server-id`不能与主服务器相同`
 
 2、导入数据库
