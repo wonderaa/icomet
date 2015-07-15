@@ -1,4 +1,4 @@
-##Linux桥接网络配置##
+**Linux桥接网络配置**
 - ONBOOT=yes
 - BOOTPROTO=static
 - IPADDR=192.168.0.175
@@ -8,15 +8,15 @@
 - MM_Controlled=no
 - DEVICE=eth0
 - 
-##svn 启动命令 ##
+**svn 启动命令**
 
 `serversvn -d -r responsePath`
 
-##tar打包过滤`.svn`文件##
+**tar打包过滤`.svn`文件**
 
 `tar -zcvf p2p.tar.gz p2p --exclude "*.svn"`
 
-##MySql主从配置##
+**MySql主从配置**
 
 1、主服务器开启log-bin日志
 
@@ -38,7 +38,7 @@
 
 `unlock tables;`
 
-##MySql从服务器配置##
+**MySql从服务器配置**
 1、设置从服务器server-id`不能与主服务器相同`
 
 2、导入数据库
