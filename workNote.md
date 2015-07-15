@@ -10,7 +10,7 @@
 - 
 ##svn 启动命令 ##
 
-**`serversvn -d -r responsePath`**
+`serversvn -d -r responsePath`
 
 ##tar打包过滤`.svn`文件##
 
