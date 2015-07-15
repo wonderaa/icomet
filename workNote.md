@@ -14,8 +14,8 @@
 
 ##tar打包过滤`.svn`文件##
 
-- `tar -zcvf p2p.tar.gz p2p --exclude "*.svn"`
-- 
+`tar -zcvf p2p.tar.gz p2p --exclude "*.svn"`
+
 ##MySql主从配置##
 
 1、主服务器开启log-bin日志
