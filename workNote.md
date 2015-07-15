@@ -1,4 +1,4 @@
-**Linux桥接网络配置**
+**Linux网卡配置**
 
 - ONBOOT=yes
 - BOOTPROTO=static
