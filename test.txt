@@ -1,10 +1,26 @@
-git  ʹ�ý̳�
+git  使用教程
 
 
-�������ļ�
+添加新文件
 
-git  add   �ļ���
+git  add   文件名
 
 git commit -m "note"
 
-git push -u origin master  //��¼
+git push -u origin master  //登录
+
+//更新于 2015-11-23
+git clone url
+
+git flow init  //初始化.git 文件
+
+git flow feature start   分支名称//创建新分支
+
+git pull origin develop // 检出线上最新代码
+
+git push origin 当前分支 //推送代码
+
+git merge develop   // 合并分支
+
+
+
